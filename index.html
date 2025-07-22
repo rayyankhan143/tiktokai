@@ -7,7 +7,7 @@
     <!-- Tailwind CSS CDN for styling -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Inter font for a clean look -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght400;600;700;800&display=swap" rel="stylesheet">
     <style>
         /* Custom styles for the Inter font */
         body {
@@ -105,8 +105,22 @@
                         body: JSON.stringify(payload)
                     });
 
+                    // Log the response status for debugging
+                    console.log('API Response Status:', response.status, response.statusText);
+
+                    if (!response.ok) {
+                        // If the response was not OK (e.g., 400, 500 status code)
+                        const errorText = await response.text();
+                        console.error('API Error Response Body:', errorText);
+                        setError(`Failed to generate content. Server responded with: ${response.status} ${response.statusText}. Please try again.`);
+                        return; // Exit the function
+                    }
+
                     // Parse the JSON response
                     const result = await response.json();
+
+                    // Log the full result for debugging
+                    console.log('Full API Result:', result);
 
                     // Check if the response contains valid content
                     if (result.candidates && result.candidates.length > 0 &&
@@ -115,21 +129,28 @@
 
                         // Parse the JSON string from the AI response
                         const jsonString = result.candidates[0].content.parts[0].text;
-                        const parsedData = JSON.parse(jsonString);
+                        console.log('Parsed JSON String from API:', jsonString); // Log the JSON string
 
-                        // Update state with the parsed data
-                        setDescription(parsedData.description || '');
-                        setTitles(parsedData.titles || []);
-                        setHashtags(parsedData.hashtags || []);
+                        try {
+                            const parsedData = JSON.parse(jsonString);
+
+                            // Update state with the parsed data
+                            setDescription(parsedData.description || '');
+                            setTitles(parsedData.titles || []);
+                            setHashtags(parsedData.hashtags || []);
+                        } catch (jsonParseError) {
+                            console.error('Error parsing JSON from API response:', jsonParseError);
+                            setError('Failed to process AI response. The data format was unexpected.');
+                        }
 
                     } else {
                         // Handle cases where the response structure is unexpected
-                        setError('Failed to generate content. Please try again.');
+                        setError('Failed to generate content. The AI response was empty or malformed.');
                         console.error('Unexpected API response structure:', result);
                     }
                 } catch (err) {
-                    // Catch and display any errors during the API call
-                    setError('An error occurred while connecting to the AI. Please try again later.');
+                    // Catch and display any errors during the API call (e.g., network errors)
+                    setError('An error occurred while connecting to the AI. Please check your internet connection and try again later.');
                     console.error('Error fetching from Gemini API:', err);
                 } finally {
                     setIsLoading(false); // Always set loading to false after completion
